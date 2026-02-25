@@ -1891,13 +1891,13 @@ function applyMatrixToTTA(
 
                 S = similar(T)
 
-                # permutación explícita
+                # explicit permutation of indices
                 for idx in Iterators.product(ntuple(_ -> 1:size(T,1), order)...)
                     idx_perm = idx[perm]
                     S[idx...] = T[idx_perm...]
                 end
 
-                # aplicamos la congruencia (como en :p2id)
+                # Apply the congruence
                 Snew = matrix_tensor_congruence_TA(Anew, S)
 
                 Tperm[ntuple(_ -> :, order)..., perm_idx] = Snew
@@ -2103,8 +2103,8 @@ function sig_pwbln_p2id_Congruence(
     # (closed-form, p2id sequence type)
     # --------------------------------------------------
     T_axis = sigAxis_p2id_ClosedForm(T, m, n)
-    T_new=matrix_tensorAlg_congruence_TA(A, T_axis)
- #   T_new = applyMatrixToTTA(A, T_axis)
+  #  T_new=matrix_tensorAlg_congruence_TA(A, T_axis)
+    T_new = applyMatrixToTTA(A, T_axis)
 
     return T_new
 end
