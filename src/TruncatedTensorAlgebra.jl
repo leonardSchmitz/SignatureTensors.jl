@@ -2095,14 +2095,19 @@ function sig_pwbln_p2id_Congruence(
     # --------------------------------------------------
     # Consistency check
     # --------------------------------------------------
-    size(A,2) == (base_dimension(T)) || error("A must have size (d_new, base_dimension(T))")
-    m * n == base_dimension(T) || error("m * n must equal T.base_dimension")
-
+    #size(A,2) == (base_dimension(T)) || error("A must have size (d_new, base_dimension(T))")
+    #m * n == base_dimension(T) || error("m * n must equal T.base_dimension")
+    size(A,2) == (m*n) || error("A must have size (d_new, m*n")
     # --------------------------------------------------
     # Step 1: build axis moment membrane signature
     # (closed-form, p2id sequence type)
     # --------------------------------------------------
-    T_axis = sigAxis_p2id_ClosedForm(T, m, n)
+    d_old=m*n
+    k_old=truncation_level(T)
+    R_old=base_algebra(T)
+    T_old=TruncatedTensorAlgebra(R_old, d_old, k_old, :p2id)
+
+    T_axis = sigAxis_p2id_ClosedForm(T_old, m, n)
   #  T_new=matrix_tensorAlg_congruence_TA(A, T_axis)
     T_new = applyMatrixToTTA(A, T_axis)
 
@@ -2207,14 +2212,15 @@ function sigPiecewiseBilinear_TA(
     d = size(coef2, 1)
 
     # Check compatibility with tensor algebra base dimension
-    if base_dimension(T) != (m*n)
-        error("Base dimension of T does not match number of membranes")
+    if size(coef2, 2) != (m*n)
+        error("size(coef,2) does not match number of membranes")
     end
 
     # Truncation level and base algebra
     k = truncation_level(T)
     Rbase = base_algebra(T)
     R_matrix = parent(coef2[1,1])
+
 
     Rnew = common_ring(Rbase, R_matrix)
     # Element type of the base ring
@@ -2275,6 +2281,6 @@ function sigPiecewiseBilinear_TA(
     for j in 1:k
         elem_out[j+1] = compute_level(j)
     end
-
-    return TruncatedTensorAlgebraElem(T, elem_out)
+    T2=TruncatedTensorAlgebra(Rnew, d, k, :p2id)
+    return TruncatedTensorAlgebraElem(T2, elem_out)
 end
