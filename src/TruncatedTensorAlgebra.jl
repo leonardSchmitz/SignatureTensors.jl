@@ -1828,8 +1828,10 @@ function moment_membrane_p2id(TTA::TruncatedTensorAlgebra{R}, m::Int, n::Int) wh
         error("m * n must equal the ambient dimension of TTA")
     end
 
-    seq = Vector{Any}(undef, k+1)
-    seq[1]=one(base_algebra(TTA))  # Level 0: scalar 1
+    E = typeof(one(base_algebra(TTA)))
+    seq = Vector{Array{E}}(undef, k+1)
+    seq[1] = fill(one(base_algebra(TTA)), ())    # array 0-dimensional
+    
     for j in 1:k
         s_m = moment_path_level(TTA, m, j)
         s_n = moment_path_level(TTA, n, j)
@@ -1848,8 +1850,7 @@ function moment_membrane_p2id(TTA::TruncatedTensorAlgebra{R}, m::Int, n::Int) wh
         seq[j+1] = tensor_j
     end
 
-    E = eltype(seq[1])
-    return TruncatedTensorAlgebraElem{R, E}(TTA, seq)
+    return TruncatedTensorAlgebraElem(TTA, seq)
 end
 
 
@@ -2196,10 +2197,10 @@ function sig2parPoly(
     # Step 2: build the induced linear map Ã : ℝ^{mn} → ℝ^d
     # from the tensor A[k,i,j]
     #
-    # Canonical vectorization:
+    # Canonical vectorization
     #   (i,j) ↦ (i-1)*n + j
     # --------------------------------------------------
-    A_tilde = zeros(S, d, m * n)
+    A_tilde = zeros(parent(A[1,1,1]), d, m * n)
 
     @inbounds for kidx in 1:d
         for i in 1:m
