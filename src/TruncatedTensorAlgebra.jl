@@ -2340,6 +2340,7 @@ function sig_pwbln_p2id_Congruence(
     #size(A,2) == (base_dimension(T)) || error("A must have size (d_new, base_dimension(T))")
     #m * n == base_dimension(T) || error("m * n must equal T.base_dimension")
     size(A,2) == (m*n) || error("A must have size (d_new, m*n")
+    
     # --------------------------------------------------
     # Step 1: build axis moment membrane signature
     # (closed-form, p2id sequence type)

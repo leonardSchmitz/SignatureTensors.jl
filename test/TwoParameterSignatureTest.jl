@@ -86,68 +86,27 @@
 
     @testset "pwbln consistency matrix vs membrane" begin
 
-        d = 6
-        T = TruncatedTensorAlgebra(QQ, d, 4, sequence_type=:p2id)
+
 
         m = 2
         n = 3
         shape = (m, n)
 
-        matrices = [
+        for coef in 1:20
 
-            [
-             1   0   2  -1   3   4;
-             2  -3   1   0   5  -2;
-            -1   4  -2   3   0   1
-            ],
-
-            [
-             3  -2  -2   1   2   5;
-            -1  -3   4   3   5   0;
-             2  -3   1   0   3   3;
-             2   4  -4   0  -1  -4
-            ],
-
-            [
-            -3   5  -1   1   4  -3;
-             1   2   3   4   5   6;
-             0  -1   1  -2   2  -3;
-             3   0  -2   1  -1   4;
-             5  -4   2   0   3  -2
-            ],
-
-            [
-             2   1   0  -1  -2  -3;
-             4   3   2   1   0  -1;
-             1  -1   1  -1   1  -1;
-             0   2  -2   2  -2   2;
-             3   3   3   3   3   3;
-            -2   1   4  -3   0   2
-            ],
-
-            [
-             1   2   3   4   5   6;
-             6   5   4   3   2   1;
-            -1  -2  -3  -4  -5  -6;
-             2   0   1  -1   3  -3;
-             4  -4   2  -2   0   1;
-             5   1  -1   2  -2   0;
-            -3   2  -2   1   0   4
-            ]
-        ]
-
-        for coef in matrices
-
-            d2 = size(coef, 1)
+            d = rand(2:8)
+            T = TruncatedTensorAlgebra(QQ, d, 4, sequence_type=:p2id)
+            
+            coef=rand(-20:20,d,m*n)
 
             pwbln  = sig(T, :pwbln, coef=coef, shape=shape)
-            pwbln2 = sig(T, :pwbln, coef=coef, shape=shape, algorithm=:LS)
+            pwbln2 = sig(T, :pwbln, coef=coef, shape=shape, algorithm=:LS26)
 
             @test pwbln == pwbln2
 
-            membrane = Array{QQFieldElem}(undef, m, n, d2)
+            membrane = Array{QQFieldElem}(undef, m, n, d)
 
-            for di in 1:d2
+            for di in 1:d
                 cont = 0
                 for i in 1:m, j in 1:n
                     cont += 1
@@ -156,7 +115,7 @@
             end
 
             pwblnm  = sig(T, :pwbln, coef=membrane, shape=shape)
-            pwblnm2 = sig(T, :pwbln, coef=membrane, shape=shape, algorithm=:LS)
+            pwblnm2 = sig(T, :pwbln, coef=membrane, shape=shape, algorithm=:LS26)
 
             @test pwblnm == pwblnm2
             @test pwbln  == pwblnm
