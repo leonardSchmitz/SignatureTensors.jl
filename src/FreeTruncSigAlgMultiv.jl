@@ -55,8 +55,6 @@ with `num_samples` sample elements. Used for barycenter computations and graded 
 # Example
     F, s = free_trunc_sig_alg_multiv(3, 2)
 """
-FreeTruncSigAlgMultiv
-
 struct FreeTruncSigAlgMultiv{T <:FieldElem} 
   free_alg::FreeAssociativeAlgebra{T}
   trunc_level::Int
@@ -150,8 +148,6 @@ Projects the element `f` to its `ell`-th graded component according to the level
     g = free_sig_bary(F) + free_sig_from_sample(1,F)
     f1 = graded_component(g, 1)
 """
-graded_component
-
 function graded_component(f::FreeAssociativeAlgebraElem,ell::Int,_trunc_level::Int)
   res = 0*f
   if iszero(f)
@@ -203,8 +199,6 @@ element in the algebra `F`.
     F, s = free_trunc_sig_alg_multiv(3, 2)
     s1 = free_sig_from_sample(1, F)
 """
-free_sig_from_sample
-
 function free_sig_from_sample(sample_index::Int, F::FreeTruncSigAlgMultiv)
   s = gens_in_shape(F)
   trunc_level = truncation_level(F)
@@ -221,8 +215,6 @@ Returns the barycenter element (`FreeTruncSigAlgMultivElem`) of the algebra `F`.
     F, s = free_trunc_sig_alg_multiv(3, 2)
     y = free_sig_bary(F)
 """
-free_sig_bary
-
 function free_sig_bary(F::FreeTruncSigAlgMultiv)
   s = gens_in_shape(F)
   trunc_level = truncation_level(F)
@@ -267,8 +259,6 @@ is added as an additional column.
 F, s = free_trunc_sig_alg_multiv(3, 2)  # trunc_level=3, 2 samples
 G = gens_in_shape(F)  # returns a 3x3 array if with_bary=true
 """
-gens_in_shape
-
 function gens_in_shape(F::FreeTruncSigAlgMultiv)
   a1 = truncation_level(F)
   a2 = number_of_samples(F)
@@ -359,14 +349,13 @@ Computes the barycenter of 2 sample elements in the free truncated algebra.
 # Example
     bary = free_barycenter_2samples(3)
 """
-free_barycenter_2samples
-
 function free_barycenter_2samples(_trunc_level::Int)
   F,s = free_trunc_sig_alg_multiv(_trunc_level,2)
   x = free_sig_from_sample(1,F)
   y = free_sig_from_sample(2,F)
   return x*exp(QQ(1,2)*log(inv(x)*y))
 end
+
 """
     bary_defining_polynomial_system(trunc_level::Int, num_samples::Int)
 
@@ -375,9 +364,6 @@ Returns the polynomial system defining the barycenter of `num_samples` in the al
 # Example
     poly_sys = bary_defining_polynomial_system(3, 2)
 """
-bary_defining_polynomial_system
-
-
 function bary_defining_polynomial_system(_trunc_level::Int,_num_samples::Int)
   F,s = free_trunc_sig_alg_multiv(_trunc_level,_num_samples,true) # with_bary = true
   x = [free_sig_from_sample(i,F) for i in (1:_num_samples)]

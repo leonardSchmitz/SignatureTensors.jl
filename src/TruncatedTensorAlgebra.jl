@@ -302,6 +302,7 @@ function Base.zero(T::TruncatedTensorAlgebra{R}) where R
     return TruncatedTensorAlgebraElem{R,E}(T, elem)
 end
 
+
 """
     one(T::TruncatedTensorAlgebra)
 
@@ -402,9 +403,7 @@ inside the truncated tensor algebra `T`.
        Computes the signature using matrix tensor congruence.
 
   geom_type = :pwmon
-"""
-sig
-
+""" 
 function sig(T::TruncatedTensorAlgebra{R},
              geom_type::Symbol; 
              coef=[], shape=[], 
@@ -480,7 +479,6 @@ function sig(T::TruncatedTensorAlgebra{R},
         throw(ArgumentError("sig not supported for given arguments"))
     end
 end
-
 
 function Base.show(io::IO, x::TruncatedTensorAlgebraElem)
     for (i, t) in enumerate(x.elem)
@@ -720,11 +718,53 @@ function Base.getindex(x::TruncatedTensorAlgebraElem, w...)
 end
 
 
+"""
+    vec(x::TruncatedTensorAlgebraElem) -> Vector
+
+Flatten a `TruncatedTensorAlgebraElem` into a single vector by concatenating
+the vectorizations of each tensor in its sequence.
+
+# Arguments
+- `x::TruncatedTensorAlgebraElem`: Element of a truncated tensor algebra.
+
+# Returns
+A `Vector` with all entries of the tensor sequence laid out contiguously.
+
+# Example
+```julia
+v = vec(x)
+```
+"""
 function Base.vec(x::TruncatedTensorAlgebraElem)
     return vcat([vec(xi) for xi in x.elem]...)
 end
 
 
+
+"""
+    ==(a::TruncatedTensorAlgebraElem, b::TruncatedTensorAlgebraElem) -> Bool
+
+Test equality of two elements of a truncated tensor algebra.
+
+Two elements are equal if they share the same parent algebra and their tensor
+sequences are equal. Only defined for `sequence_type` ∈ `{:iis, :p2id, :p2}`.
+
+# Arguments
+- `a::TruncatedTensorAlgebraElem`: Left-hand side.
+- `b::TruncatedTensorAlgebraElem`: Right-hand side.
+
+# Returns
+`true` if same parent and same tensor sequence, `false` otherwise.
+
+# Throws
+- `ArgumentError` if either element has an unsupported `sequence_type`, or if
+  they have different sequence types.
+
+# Example
+```julia
+a == b
+```
+"""
 function Base.:(==)(a::TruncatedTensorAlgebraElem, b::TruncatedTensorAlgebraElem)
     if parent(a).sequence_type == :iis && parent(b).sequence_type == :iis
         return parent(a) == parent(b) && tensor_sequence(a) == tensor_sequence(b)
@@ -746,11 +786,23 @@ end
 """
     Base.:+(a::TruncatedTensorAlgebraElem, b::TruncatedTensorAlgebraElem)
 
-Element-wise addition of two truncated signatures.
+Element-wise addition of two elements of a truncated tensor algebra.
 
-- Only defined for `sequence_type == :iis`.
-- Returns a new `TruncatedTensorAlgebraElem` whose tensors are the sum of
-  the corresponding levels of `a` and `b`.
+# Arguments
+- `a::TruncatedTensorAlgebraElem`: Left-hand side.
+- `b::TruncatedTensorAlgebraElem`: Right-hand side.
+
+# Returns
+A new `TruncatedTensorAlgebraElem` whose tensor sequence is the level-wise
+sum of those of `a` and `b`.
+
+# Throws
+- `ArgumentError` if the `sequence_type` of `a` or `b` is not `:iis`, `:p2id`, or `:p2`,
+  or if they have different sequence types.
+
+# Notes
+- Both elements must share the same parent algebra.
+- Addition is defined for `sequence_type` ∈ `{:iis, :p2id, :p2}`.
 """
 function Base.:+(a::TruncatedTensorAlgebraElem, b::TruncatedTensorAlgebraElem)
     if parent(a).sequence_type == :iis && parent(b).sequence_type == :iis
@@ -774,12 +826,24 @@ end
 """
     Base.:-(a::TruncatedTensorAlgebraElem, b::TruncatedTensorAlgebraElem)
 
-Element-wise subtraction of two truncated signatures.
+Element-wise subtraction of two elements of a truncated tensor algebra.
 
-- Only defined for `sequence_type == :iis`.
-- Returns a new `TruncatedTensorAlgebraElem` whose tensors are the difference
-  of the corresponding levels of `a` and `b`.
-- Analogous to `+` but performs subtraction.
+# Arguments
+- `a::TruncatedTensorAlgebraElem`: Left-hand side.
+- `b::TruncatedTensorAlgebraElem`: Right-hand side.
+
+# Returns
+A new `TruncatedTensorAlgebraElem` whose tensor sequence is the level-wise
+difference of those of `a` and `b`.
+
+# Throws
+- `ArgumentError` if the `sequence_type` of `a` or `b` is not `:iis`, `:p2id`, or `:p2`,
+  or if they have different sequence types.
+
+# Notes
+- Both elements must share the same parent algebra.
+- Subtraction is defined for `sequence_type` ∈ `{:iis, :p2id, :p2}`.
+- Analogous to `+`, see [`Base.:+`](@ref).
 """
 function Base.:-(a::TruncatedTensorAlgebraElem, b::TruncatedTensorAlgebraElem)
     if parent(a).sequence_type == :iis && parent(b).sequence_type == :iis
@@ -809,16 +873,36 @@ end
 """
     Base.:*(a::TruncatedTensorAlgebraElem, b::TruncatedTensorAlgebraElem)
 
-Chen product (truncated tensor algebra multiplication) of two signatures.
+Chen product (concatenation product) of two elements in a truncated tensor algebra,
+implementing Chen's identity for iterated integrals.
 
-- Only defined for `sequence_type == :iis`.
-- Uses free truncated algebra and evaluates the product using Chen’s identity.
-- Returns a new `TruncatedTensorAlgebraElem` representing the concatenation
-  of `a` and `b`.
+For two signatures `a` and `b` of a path, the product at level `i` is given by:
+```math
+(a \\cdot b)_i = a_i + b_i + \\sum_{j=1}^{i-1} a_j \\otimes b_{i-j}
+```
+
+where `⊗` denotes the tensor product of arrays (`concatenate_tensors`).
+
+# Arguments
+- `a::TruncatedTensorAlgebraElem{R,E}`: Left-hand side element.
+- `b::TruncatedTensorAlgebraElem{R,E}`: Right-hand side element.
+
+# Returns
+A new `TruncatedTensorAlgebraElem` representing the Chen product of `a` and `b`,
+truncated at the same level `k` as the parent algebra.
+
+# Throws
+- `ArgumentError` if the `sequence_type` of `a` and `b` is not a matching pair of
+  `:iis` or `:p2id`. The type `:p2` is not supported for this operation.
+
+# Notes
+- Both elements must share the same parent algebra and the same `sequence_type`.
+- The level-0 component is inherited from `a` (as expected for the Chen product).
+- The level-1 component is the sum `a₁ + b₁`.
+- For levels `i ≥ 2`, the cross terms `aⱼ ⊗ b_{i-j}` are accumulated via
+  `concatenate_tensors`.
+- See also: [`Base.:+`](@ref), [`Base.:-`](@ref).
 """
-
-
-
 function Base.:*(a::TruncatedTensorAlgebraElem{R,E}, 
                  b::TruncatedTensorAlgebraElem{R,E}) where {R,E}
 
@@ -922,7 +1006,6 @@ Matrix-tensor congruence multiplication.
 - Left-multiplies a truncated signature by a matrix using a tensor congruence
   operation.
 """
-
 function Base.:*(matrix::AbstractMatrix, x::TruncatedTensorAlgebraElem)
     T = parent(x)
     if T.sequence_type == :iis
@@ -945,7 +1028,6 @@ Scalar multiplication of a truncated signature.
 - Supports numbers (`Number`) or algebra elements (`FieldElem` / `R`).
 - Returns a new `TruncatedTensorAlgebraElem`.
 """
-
 function Base.:*(a::FieldElem, b::TruncatedTensorAlgebraElem)
     if parent(b).sequence_type == :iis
         A = parent(b)
@@ -999,14 +1081,27 @@ end
 # =========================
 
 """
-    Base.:inv(a::TruncatedTensorAlgebraElem)
+    Base.inv(a::TruncatedTensorAlgebraElem)
 
-Multiplicative inverse (Chen inverse) of a truncated signature.
+Multiplicative inverse (Chen inverse) of an element in a truncated tensor algebra.
 
-- Only defined for `sequence_type == :iis`.
-- Returns `a^{-1}` in the truncated tensor algebra using free algebra inversion.
+The inverse is computed by lifting `a` to a free truncated signature algebra,
+inverting there, and evaluating the result back at `a`.
+
+# Arguments
+- `a::TruncatedTensorAlgebraElem`: Element to invert.
+
+# Returns
+A new `TruncatedTensorAlgebraElem` representing `a⁻¹` in the Chen product sense,
+satisfying `a * inv(a) == one(parent(a))`.
+
+# Throws
+- `ArgumentError` if `sequence_type` is not `:iis` or `:p2id`.
+
+# Notes
+- Defined for `sequence_type` ∈ `{:iis, :p2id}`. Not supported for `:p2`.
+- See also: [`Base.:*`](@ref), [`Base.:^`](@ref).
 """
-
 function Base.:inv(a::TruncatedTensorAlgebraElem)
     if parent(a).sequence_type == :iis
         A = parent(a)
@@ -1029,13 +1124,25 @@ end
 """
     Base.:^(a::TruncatedTensorAlgebraElem, n::Int)
 
-Exponentiation of a truncated signature.
+Exponentiation of an element in a truncated tensor algebra via iterated Chen product.
 
-- Only defined for `sequence_type == :iis`.
-- For `n >= 0`, returns `a^n` (n-fold Chen product).
-- For `n < 0`, uses the inverse: `a^n = (inv(a))^(-n)`.
+# Arguments
+- `a::TruncatedTensorAlgebraElem`: Base element.
+- `n::Int`: Integer exponent (positive, negative, or zero).
+
+# Returns
+A new `TruncatedTensorAlgebraElem` representing the `n`-fold Chen product of `a`:
+- `n > 0`: `a * a * ... * a` (`n` times).
+- `n == 0`: the identity element `one(parent(a))`.
+- `n < 0`: `inv(a) * inv(a) * ... * inv(a)` (`|n|` times).
+
+# Throws
+- `ArgumentError` if `sequence_type` is not `:iis` or `:p2id`.
+
+# Notes
+- Defined for `sequence_type` ∈ `{:iis, :p2id}`. Not supported for `:p2`.
+- See also: [`Base.inv`](@ref), [`Base.:*`](@ref).
 """
-
 function Base.:^(a::TruncatedTensorAlgebraElem, n::Int)
     if parent(a).sequence_type == :iis
         A = parent(a)
@@ -1065,19 +1172,33 @@ end
 # =========================
 
 """
-    Base.:exp(a::TruncatedTensorAlgebraElem)
+    Base.exp(a::TruncatedTensorAlgebraElem)
 
-Exponential of a truncated signature.
+Exponential of an element in a truncated tensor algebra, computed via the
+formal power series truncated at level `k`:
+```math
+\\exp(a) = \\sum_{n=0}^{k} \\frac{a^n}{n!}
+```
 
-- Only defined for `sequence_type == :iis`.
-- Computes the exponential in the free truncated tensor algebra:
-  
-    exp(a) = sum_{n=0}^{infty} frac{a^n}{n!}
-  
-  truncated to the algebra’s level.
+The exponential is computed by lifting `a` to a free truncated signature algebra,
+evaluating `exp` there, and mapping the result back.
+
+# Arguments
+- `a::TruncatedTensorAlgebraElem`: Element to exponentiate.
+
+# Returns
+A new `TruncatedTensorAlgebraElem` representing `exp(a)`, truncated at the
+same level `k` as the parent algebra.
+
+# Throws
+- `ArgumentError` if `sequence_type` is not `:iis`.
+
+# Notes
+- Only defined for `sequence_type == :iis`. Not supported for `:p2id` or `:p2`.
+- The input `a` is expected to have vanishing level-0 component, as is standard
+  for log-signatures (i.e., `a` lives in the Lie algebra, not the group).
+- See also: [`Base.log`](@ref), [`Base.inv`](@ref), [`Base.:^`](@ref).
 """
-
-
 function Base.:exp(a::TruncatedTensorAlgebraElem)
     if parent(a).sequence_type == :iis
         A = parent(a)
@@ -1093,19 +1214,35 @@ end
 
 
 """
-    Base.:log(a::TruncatedTensorAlgebraElem)
+    Base.log(a::TruncatedTensorAlgebraElem)
 
-Logarithm of a truncated signature.
+Logarithm of an element in a truncated tensor algebra, computed via the
+formal power series truncated at level `k`:
+```math
+\\log(a) = \\sum_{n=1}^{k} \\frac{(-1)^{n+1}}{n} (a - 1)^n
+```
 
-- Only defined for `sequence_type == :iis`.
-- Computes the logarithm in the free truncated tensor algebra:
-  
-    log(a) = sum_{n=1}^{infty} (-1)^{n+1} \frac{(a - 1)^n}{n}
-  
-  truncated to the algebra’s level.
+The logarithm is computed by lifting `a` to a free truncated signature algebra,
+evaluating `log` there, and mapping the result back.
+
+# Arguments
+- `a::TruncatedTensorAlgebraElem`: Element to take the logarithm of.
+
+# Returns
+A new `TruncatedTensorAlgebraElem` representing `log(a)`, truncated at the
+same level `k` as the parent algebra. The result lives in the Lie algebra
+(vanishing level-0 component).
+
+# Throws
+- `ArgumentError` if `sequence_type` is not `:iis`.
+
+# Notes
+- Only defined for `sequence_type == :iis`. Not supported for `:p2id` or `:p2`.
+- The input `a` is expected to have level-0 component equal to `1` (i.e., `a`
+  lives in the group, not the Lie algebra).
+- `log` and `exp` are mutual inverses: `log(exp(x)) == x` and `exp(log(a)) == a`.
+- See also: [`Base.exp`](@ref), [`Base.inv`](@ref), [`Base.:^`](@ref).
 """
-
-
 function Base.:log(a::TruncatedTensorAlgebraElem)
     if parent(a).sequence_type == :iis
         A = parent(a)
@@ -1121,7 +1258,60 @@ end
 
 ### Barycenter 
 
+"""
+    bary(bs::Vector{TruncatedTensorAlgebraElem{R, E}}; algorithm::Symbol = :default) where {R, E}
 
+Compute the **Lie group barycenter** (in the sense of Buser and Karcher) of a collection of
+elements in a truncated tensor algebra, representing truncated path signatures.
+
+The barycenter is the unique group element ``m`` satisfying the implicit equation
+```math
+\\sum_{i=1}^{N} \\log(m^{-1} \\cdot b_i) = 0
+```
+
+in the associated Lie algebra. This is distinct from the naive mean (pointwise average of
+logarithms), as it preserves the group structure of the truncated signature space.
+
+See also: Améndola & Schmitz, *Learning Barycenters from Signature Matrices*, arXiv:2509.07815.
+
+# Arguments
+- `bs::Vector{TruncatedTensorAlgebraElem{R,E}}`: A nonempty vector of elements from the same
+  truncated tensor algebra (all must share the same parent).
+- `algorithm::Symbol`: The algorithm used to compute the barycenter. Options:
+  - `:default` — calls `bary_TA`, the general iterative algorithm valid for any truncation level.
+  - `:geodesic` — geodesic midpoint formula `b₁ · exp(½ · log(b₁⁻¹ · b₂))`;
+    only valid for exactly **2 elements**.
+  - `:CDMSSU24trunc2` — specialized algorithm from Theorem 4.11 of arXiv:2509.07815,
+    valid only for truncation level `k = 2`.
+  - `:AS25trunc2` — closed-form expression from Theorem 4.11 of arXiv:2509.07815,
+    valid only for truncation level `k = 2`.
+
+# Returns
+A `TruncatedTensorAlgebraElem{R,E}` representing the barycenter of `bs`.
+
+# Throws
+- `ArgumentError` if the combination of `algorithm` and input arguments is not supported
+  (e.g., `:geodesic` with more than 2 elements, or `trunc2` algorithms with `k ≠ 2`).
+
+# Examples
+```julia
+# Default algorithm (any number of elements, any truncation level)
+bary(bs)
+
+# Geodesic midpoint of exactly 2 elements
+bary([b1, b2]; algorithm = :geodesic)
+
+# Closed-form algorithm at truncation level k = 2
+bary(bs; algorithm = :AS25trunc2)
+```
+
+# Notes
+- All elements in `bs` must belong to the same parent algebra.
+- The barycenter is **not** the pointwise expectation of tensor entries; it lives in the
+  free nilpotent Lie group and can be interpreted as the signature of some path.
+- For `k ≥ 3`, the barycenter differs from the naive mean in the Lie algebra;
+  see arXiv:2509.07815, Example 4.9.
+"""
 function bary(bs::Vector{TruncatedTensorAlgebraElem{R, E}}; 
               algorithm::Symbol = :default) where {R, E}
     k = truncation_level(parent(bs[1]))
@@ -1982,8 +2172,6 @@ by mode-product along all modes. Handles both `:p2id` and `:p2` signatures.
 - `X` : input truncated tensor algebra
 Returns a **new** TruncatedTensorAlgebra with updated ambient dimension `d_new`.
 """
-
-
 function applyMatrixToTTA(
     A::AbstractMatrix,
     X::TruncatedTensorAlgebraElem{R,E}
@@ -2138,8 +2326,6 @@ via matrix-tensor congruence. Returns a **new** truncated tensor algebra with up
 - `T` : input truncated tensor algebra
 - `a` : coefficient matrix (d_new × d)
 """
-
-
 function tensor_to_matrix(A::AbstractArray{T,3}) where {T}
     d, m, n = size(A)
     #M = zeros(T, d, m*n)
@@ -2225,7 +2411,6 @@ Returns:
 - T_new :: TruncatedTensorAlgebra
 - (m, n) :: dimensions of the moment membrane
 """
-
 function sig2parPoly(
     T::TruncatedTensorAlgebra,
     A::AbstractArray{S,3}

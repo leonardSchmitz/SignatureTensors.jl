@@ -38,8 +38,6 @@ a tuple `(R, a)` where `R` is the ring and `a` is a matrix of generators.
 # Example
     R, a = polynomial_ring_sig_transform(2, 3)
 """
-polynomial_ring_sig_transform
-
 function polynomial_ring_sig_transform(_dim::Int,_order::Int)
    return  polynomial_ring(QQ, _magic_symbols_mat_a(_dim,_order))
 #   return  polynomial_ring(QQ, :a => (1:_dim,1:_order))

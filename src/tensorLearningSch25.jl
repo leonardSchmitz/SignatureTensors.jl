@@ -169,6 +169,51 @@ function leading_coefficient_and_zero_TL(p)
 end
 
 
+
+"""
+    recover(S::TruncatedTensorAlgebraElem; 
+            C::Union{TruncatedTensorAlgebraElem, Nothing}=nothing,
+            algorithm::Symbol = :default)
+
+Recover a linear transformation matrix `A` from a truncated signature `S`, solving
+the **tensor learning** (path recovery) inverse problem:
+```math
+S = A \\cdot C
+```
+
+where `C` is a known core tensor (typically the signature of a canonical axis path)
+and `A` is the unknown invertible matrix encoding the path.
+
+The uniqueness of this solution (over the reals) is guaranteed by [PSS2019, Theorem 6.2]
+under the assumption that `S` lies in the orbit of `C` under matrix-tensor congruence.
+
+See: L. Schmitz, *An Efficient Algorithm for Tensor Learning*, arXiv:2512.14218.
+
+# Arguments
+- `S::TruncatedTensorAlgebraElem`: The observed truncated signature to invert.
+- `C::Union{TruncatedTensorAlgebraElem, Nothing}`: The core tensor representing the
+  signature of the canonical axis path. Required for `:default` and `:Buchberger`.
+- `algorithm::Symbol`: Algorithm used to recover `A`. Options:
+  - `:default` / `:Buchberger` — solves the system `S = A*C` via Gröbner basis
+    computation over `QQ`. Requires `C`, and the resulting ideal must be
+    zero-dimensional of degree 1.
+  - `:Sch25` — efficient algorithm from arXiv:2512.14218, based on symbolic
+    multilinear algebra and Gauß transformations on the third-order signature tensor.
+    Requires `base_algebra(parent(S)) == QQ` and truncation level `k = 3`.
+
+# Returns
+- For `:default` / `:Buchberger`: a matrix of leading coefficients representing `A`,
+  recovered via normal forms modulo the ideal.
+- For `:Sch25`: the inverse of the transformation matrix computed by `tensor_learning_3`,
+  i.e., `A = inv(tensor_learning_3(6 * S₃))` where `S₃` is the level-3 tensor of `S`.
+
+# Throws
+- `AssertionError` if `C` is not provided when using `:default` or `:Buchberger`.
+- `AssertionError` if the resulting ideal is not zero-dimensional or not of degree 1
+  (when using `:default` / `:Buchberger`).
+- `AssertionError` if `base_algebra` is not `QQ` or `k ≠ 3` (when using `:Sch25`).
+- `ErrorException` if an unknown algorithm symbol is passed.
+"""
 function recover(S::TruncatedTensorAlgebraElem; 
                  C::Union{TruncatedTensorAlgebraElem, Nothing}=nothing,
                  algorithm::Symbol = :default)

@@ -113,16 +113,36 @@ end
 """
     mode_product(T::AbstractArray, A::AbstractMatrix, mode::Int, R)
 
-Compute the mode-n product of tensor `T` with matrix `A` along the specified `mode`.
+Compute the **mode-n product** of a tensor `T` with a matrix `A` along a specified axis (`mode`).
 
-- `T` : input tensor of any order (dimensions can be for p2id or p2)
-- `A` : matrix of size (d_new × d) to multiply along the `mode` dimension
-- `mode` : the axis along which to multiply
-- `R` : base ring for elements (e.g., QQMPolyRing)
+# Arguments
+- `T::AbstractArray` : Input tensor of any order (can represent vectors, matrices, or higher-order tensors).  
+- `A::AbstractMatrix` : Matrix of size `(d_new × d)` to multiply along the `mode`-th dimension of `T`.  
+- `mode::Int` : The axis of `T` along which the multiplication is applied (1-based indexing).  
+- `R` : Base ring or type for elements (e.g., `QQMPolyRing`), used to lift matrix entries into the tensor's algebra.
 
-Returns a new tensor with dimension `d_new` along the `mode` axis.
-- If `T` is a level-1 tensor from TruncatedTensorAlgebra, multiplies a vector of ones.
-- For higher levels, performs a linear transformation along the selected mode.
+# Returns
+A new tensor of the same order as `T` but with the `mode`-th dimension replaced by `d_new`.
+
+# Details
+- For **level-1 tensors** (vectors) from a `TruncatedTensorAlgebra`, this multiplies a vector of ones.  
+- For **higher-order tensors**, performs a linear transformation along the specified mode by:
+  1. Moving the `mode` axis to the first dimension.
+  2. Matricizing the tensor along that axis.
+  3. Multiplying by `A` (converted to the base ring `R`).
+  4. Reshaping the result back to the tensor form.
+  5. Permuting the axes back to the original order.
+
+# Example
+```julia
+T = rand(3,4,2)          # 3×4×2 tensor
+A = rand(5,3)            # 5×3 matrix to multiply along mode 1
+R = Float64               # base ring
+T_new = mode_product(T, A, 1, R)
+size(T_new)               # returns (5,4,2)
+```
+Errors
+Throws an error if the mode-th dimension of T does not match the number of columns d of A.
 """
 function mode_product(T::AbstractArray, A::AbstractMatrix, mode::Int, R)
     d_new, d = size(A)

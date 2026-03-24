@@ -3,16 +3,17 @@ export
     benchmark_membrane
 
 function run_with_timeout_julia(f::Function, timeout::Int=5)
-    t = Threads.@spawn f()  # Function in a diferent Thread
+    t = Threads.@spawn f() 
     for i in 1:timeout
-        if istaskdone(t)  # check if the function has ended
-            return fetch(t)  # return the result
+        if istaskdone(t) 
+            return fetch(t) 
         end
-        sleep(1)  # wait 1 seconds and then checks
+        sleep(1)  
     end
-    #if we reach here the function has no ended
+
     return false
 end
+
 
 
 function benchmark_signature(ds::Vector{Int}, ms::Vector{Int}, k::Int; 
