@@ -428,6 +428,8 @@ function sig(T::TruncatedTensorAlgebra{R},
             return sig_pwln_TA_Congruence(T, Array(coef))
         elseif geom_type == :pwln && (algorithm == :Chen || algorithm == :default)
             return sig_pwln_TA_chen(T, Array(coef))
+        elseif geom_type == :pwln && algorithm == :LS
+            return sig_pwln_TA_LS(T,Array(coef))
         elseif geom_type == :pwmon && algorithm == :Chen
             return sig_pw_mono_chen(T, composition, regularity)
         elseif geom_type == :pwmon && (algorithm == :ALS26 || algorithm == :default)
@@ -2567,6 +2569,7 @@ function weighted_shift(matrix::AbstractMatrix)
     return out
 end
 
+
 # Compute the signature of a bilinear membrane
 function sig_lott(matrixSeq::Vector{<:AbstractMatrix}, word::Vector{Int})
     d = length(matrixSeq)        # dimension of the membrane
@@ -2810,3 +2813,122 @@ function sigPiecewiseBilinear_fromTensor_TA(
     T2 = TruncatedTensorAlgebra(Rnew, d, k, :p2id)
     return TruncatedTensorAlgebraElem(T2, elem_out)
 end
+
+
+
+
+function weighted_shift_1d(pvec::AbstractVector)
+    n = length(pvec)
+    out = fill(zero(eltype(pvec)), n)
+    for i in 2:n
+        coef = 1 // (i - 1)
+        out[i] = coef * pvec[i-1]
+    end
+    return out
+end
+
+
+function sig_lott_1d(pathSeq::Vector{<:AbstractVector}, word::Vector{Int})
+    d = length(pathSeq)
+    n = length(pathSeq[1])
+    k = length(word)
+    T = eltype(pathSeq[1])
+
+    
+    sheet = fill(zero(T), n, k+1, k+1)
+    for j in 1:n
+        sheet[j, 1, 1] += one(T)
+    end
+
+    for p in 1:k
+        letter = word[p]
+        pvec = pathSeq[letter]
+
+
+        for j in 1:n
+            sheet[j, :, :] .*= pvec[j]
+            sheet[j, :, :] = weighted_shift(sheet[j, :, :]) 
+        end
+
+
+        
+
+        for j in 1:(n-1)
+            csum = vec(column_sum(sheet[j, :, :]))
+            sheet[j+1, 1, :] .+= csum
+        end
+    end
+
+
+    out = sum(row_sum(column_sum(sheet[n, :, :])))
+    return out
+end
+
+
+function sig_pwln_TA_LS(
+    T::TruncatedTensorAlgebra{R},
+    coef1::AbstractMatrix   
+) where {R}
+
+    if T.sequence_type != :iis
+        error("sig_pwln_TA_LS only defined for sequence_type = :iis")
+    end
+
+    d, n = size(coef1)
+
+    if d != base_dimension(T)
+        error("coef1 rows must match the algebra dimension d")
+    end
+
+    k  = truncation_level(T)
+    Rbase    = base_algebra(T)
+    R_matrix = parent(coef1[1, 1])
+    Rnew     = common_ring(Rbase, R_matrix)
+    E        = typeof(one(Rnew))
+
+    # Construir el path: d vectores de longitud n
+    path = Vector{Vector{E}}(undef, d)
+    for di in 1:d
+        path[di] = [coef1[di, i] for i in 1:n]
+    end
+
+    elem_out    = Vector{Array{E}}(undef, k+1)
+    elem_out[1] = fill(one(Rnew), ())   # nivel 0: escalar 1
+
+    function compute_level(r)
+        tensor_dims = ntuple(_ -> d, r)
+        Tlevel = fill(zero(E), tensor_dims...)
+
+        function loop_word(current::Vector{Int}, level::Int)
+            if level > r
+                val = sig_lott_1d(path, copy(current))
+                Tlevel[Tuple(current)...] = try
+                    convert(E, val)
+                catch
+                    val
+                end
+            else
+                for letter in 1:d
+                    current[level] = letter
+                    loop_word(current, level + 1)
+                end
+            end
+        end
+
+        loop_word(fill(0, r), 1)
+        return Tlevel
+    end
+
+    for j in 1:k
+        elem_out[j+1] = compute_level(j)
+    end
+
+    for j in 1:k
+        elem_out[j+1]=elem_out[j+1]*factorial(j)
+    end
+
+    T2 = TruncatedTensorAlgebra(Rnew, d, k, :iis)
+    return TruncatedTensorAlgebraElem(T2, elem_out)
+end
+
+

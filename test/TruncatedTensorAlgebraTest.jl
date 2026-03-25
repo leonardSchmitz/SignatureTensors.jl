@@ -137,6 +137,7 @@
           S = sig(T,:pwln,coef=A); 
           @test S == sig(T,:pwln,coef=A,algorithm=:Chen); 
           @test S == sig(T,:pwln,coef=A,algorithm=:congruence); 
+          @test S == sig(T,:pwln,coef=A,algorithm=:LS);
           C = sig(TruncatedTensorAlgebra(QQ,m,k),:axis); # axis tensor in dim m
           @test S == A*C
           @test zero(T) + S == S
