@@ -55,15 +55,13 @@ Concrete signatures are stored as elements of this algebra via
 
 # Mathematical meaning
 This object represents the truncated signature space
- S^{k}(X) = (1, S^1(X), dots, S^k(X)), 
+```math
+S^{k}(X) = (1, S^1(X), dots, S^k(X)) 
+```
 where the precise tensor structure depends on `sequence_type`.
 
 See also [`TruncatedTensorAlgebraElem`](@ref).
 """
-
-
-
-
 struct TruncatedTensorAlgebra{R}
     base_algebra::R
     base_dimension::Int
@@ -95,23 +93,112 @@ a fixed truncation level.
 
 # Mathematical meaning
 This object represents a truncated signature
-
-S^{k}(X) = (1, S^1(X), ..., S^k(X)),
-
+```math
+S^{k}(X) = (1, S^1(X), ..., S^k(X))
+```
 where each `S^i(X)` is a tensor of order `i`.
 """
-
 struct TruncatedTensorAlgebraElem{R,E}
     parent::TruncatedTensorAlgebra{R}
     elem::Vector{Array{E}}
 end
 
+
+"""
+    truncation_level(F::TruncatedTensorAlgebra)
+
+Return the truncation level `k` of the truncated tensor algebra `F`.
+
+# Description
+This corresponds to the highest tensor level stored in the truncated
+signature:
+```math
+    S^{k}(X) = (1, S^1(X), ..., S^k(X))
+```
+# Returns
+- `Int`: truncation level `k`.
+"""
 truncation_level(F::TruncatedTensorAlgebra) = F.truncation_level
+
+
+"""
+    base_dimension(F::TruncatedTensorAlgebra)
+
+Return the base dimension `d` of the truncated tensor algebra `F`.
+
+# Description
+This is the dimension of the underlying path or membrane from which
+the signature is computed.
+
+# Returns
+- `Int`: dimension `d`.
+"""
 base_dimension(F::TruncatedTensorAlgebra) = F.base_dimension
+
+
+"""
+    base_algebra(F::TruncatedTensorAlgebra)
+
+Return the base algebra of the truncated tensor algebra `F`.
+
+# Description
+This specifies the algebra over which tensor coefficients of the
+signature are defined.
+
+# Returns
+- `R`: base algebra.
+"""
 base_algebra(F::TruncatedTensorAlgebra) = F.base_algebra
+
+
+"""
+    sequence_type(F::TruncatedTensorAlgebra)
+
+Return the sequence type of the truncated tensor algebra `F`.
+
+# Description
+Indicates the type of signature stored in the algebra:
+- `:iis`   — iterated-integrals signature (rough paths),
+- `:p2id`  — two-parameter signature (membranes).
+
+# Returns
+- `Symbol`: sequence type.
+"""
 sequence_type(F::TruncatedTensorAlgebra) = F.sequence_type
 
+
+"""
+    parent(a::TruncatedTensorAlgebraElem)
+
+Return the parent truncated tensor algebra of the element `a`.
+
+# Description
+The parent contains the structural metadata of the signature,
+including dimension, truncation level, and sequence type.
+
+# Returns
+- `TruncatedTensorAlgebra`: parent algebra.
+"""
 Base.parent(a::TruncatedTensorAlgebraElem) = a.parent
+
+
+"""
+    tensor_sequence(a::TruncatedTensorAlgebraElem)
+
+Return the tensor sequence representing the truncated signature.
+
+# Description
+The result is a vector of tensors:
+- index `1`: level 1 tensor (vector),
+- index `2`: level 2 tensor (matrix),
+- ...
+- index `k`: level `k` tensor.
+
+Each entry is an array of order equal to its level.
+
+# Returns
+- `Vector{Array{E}}`: tensor sequence.
+"""
 tensor_sequence(a::TruncatedTensorAlgebraElem) = a.elem
 
 
@@ -149,8 +236,11 @@ two-parameter objects (membranes).
   `(:iis, :p2id, :p2)`.
 
 # Example
-
-A = TruncatedTensorAlgebra(QQ, 2, 3; sequence_type = :iis)
+# Examples
+```julia-repl
+julia> A = TruncatedTensorAlgebra(QQ, 2, 3; sequence_type = :iis)
+TruncatedTensorAlgebra(QQ, 2, 3, :iis)
+```
 
 This creates a container for truncated signatures of a 2-dimensional
 rough path, truncated at level 3.
@@ -247,11 +337,11 @@ identity in the space of truncated signatures.
   An element of `T` whose tensor coefficients are zero at every level.
 
 # Example
-T = TruncatedTensorAlgebra(QQ, 3, 2; sequence_type = :iis)
+```julia-repl
+julia> T = TruncatedTensorAlgebra(QQ, 3, 2; sequence_type = :iis)
 z = zero(T)
+```
 """
-
-
 function Base.zero(T::TruncatedTensorAlgebra{R}) where R
 
     k = truncation_level(T)
@@ -318,11 +408,11 @@ algebra `T`.
   An element of `T` whose tensor coefficients are the identity signature.
 
 # Example
-T = TruncatedTensorAlgebra(QQ, 3, 2; sequence_type = :iis)
+```julia-repl
+julia> T = TruncatedTensorAlgebra(QQ, 3, 2; sequence_type = :iis)
 z = one(T)
+```
 """
-
-
 function Base.one(T::TruncatedTensorAlgebra{R}) where R
     if T.sequence_type == :iis
 
@@ -347,14 +437,15 @@ end
 
 
 """
-    sig(
-        T::TruncatedTensorAlgebra,
-        geom_type::Symbol;
-        coef = [],
-        composition::Vector{Int} = Int[],
-        regularity::Int = 0,
-        algorithm::Symbol = :default
-    )
+sig(
+    T::TruncatedTensorAlgebra,
+    geom_type::Symbol;
+    coef = [],
+    shape = [],
+    composition::Vector{Int} = Int[],
+    regularity::Int = 0,
+    algorithm::Symbol = :default
+)
 
 Compute the **truncated signature** associated with a specified path type
 inside the truncated tensor algebra `T`.
@@ -366,122 +457,58 @@ inside the truncated tensor algebra `T`.
 
 - `geom_type::Symbol`  
   Type of path whose signature is to be computed. Supported values include:
-  
-  # Path types and algorithms
 
- geom_type = :point
-   Creates the signature of a constant path.
-   This corresponds to the unit signature, where the level-0 component is 1
-   and all higher levels are zero.
+  ## For `:iis` sequence type
+  - `:point`  
+    Signature of a constant path (unit signature: level-0 is 1, higher levels are 0).
 
- geom_type = :axis
-   Creates the signature of an axis path, i.e. a path that moves only along
-   coordinate axes.
+  - `:segment`  
+    Signature of a single segment; requires `coef` to specify vector.
 
-   Additional arguments:
-     algorithm = :AFS19
-       Computes the signature explicitly using closed-form formulas;
-       see Amendola-Friz-Sturmfels "Varieties of Signature Tensors" 2019
+  - `:axis`  
+    Signature of a path moving along coordinate axes.  
+    Optional `algorithm`:
+      - `:AFS19` – Closed-form formulas (Amendola-Friz-Sturmfels 2019)
+      - `:Chen` – Computes using Chen’s identity
 
-     algorithm = :Chen
-       Computes the signature using Chen’s identity.
+  - `:mono`  
+    Signature of a monomial path.
 
-  geom_type = :mono
-   Computes the signature of a monomial path.
+  - `:pwln`  
+    Piecewise linear path. Optional arguments:
+      - `coef` – Matrix of coefficients
+      - `algorithm` – `:Chen`, `:congruence`, or `:LS26`
 
- geom_type = :pwln
- Computes the signature of a piecewise linear path.
+  - `:pwmon`  
+    Piecewise monomial path. Optional arguments:
+      - `composition` – Exponents of each segment
+      - `regularity` – Regularity of the path
+      - `algorithm` – `:Chen` or `:ALS26`
 
-   Additional arguments:
-     coef
-       Matrix of coefficients describing the piecewise linear path.
+  - `:poly`  
+    Polynomial path. Optional `algorithm`:
+      - `:congruence` or `:default`
+      - `:ARS26` – Alternative method
 
-     algorithm = :Chen
-       Computes the signature using Chen’s identity.
+  - `:spline`  
+    Spline path with optional `coef`, `composition`, and `regularity`
 
-     algorithm = :congruence
-       Computes the signature using matrix tensor congruence.
+  ## For `:p2id` sequence type
+  - `:point` – Constant path
+  - `:mono` – Monomial membrane
+  - `:axis` – Axis-aligned membrane, `algorithm` can be `:AFS19` or `:Chen`
+  - `:poly` – Polynomial membrane; if `coef` is 2D, uses `sig2parPoly_fromMatrix`
+  - `:pwbln` – Piecewise bilinear path; `algorithm` can be `:congruence` or `:LS26`
 
-  geom_type = :pwmon
-""" 
-function sig(T::TruncatedTensorAlgebra{R},
-             geom_type::Symbol; 
-             coef=[], shape=[], 
-             composition::Vector{Int}=Int[],
-             regularity::Int=0,
-             algorithm::Symbol=:default) where R
-
-    seq_type = sequence_type(T)
-
-    if seq_type == :iis
-        if geom_type == :point && coef == [] && algorithm == :default
-            return one(T)
-        elseif geom_type == :segment
-            return sig_segment_TA(T, Array(coef))
-        elseif geom_type == :axis && coef == [] && (algorithm == :default || algorithm == :AFS19)
-            return sigAxis_TA_ClosedForm(T)
-        elseif geom_type == :axis && coef == [] && algorithm == :Chen
-            return sig_axis_TA(T)
-        elseif geom_type == :mono && coef == [] && algorithm == :default
-            return sig_mono_TA(T)
-        elseif geom_type == :pwln && algorithm == :congruence
-            return sig_pwln_TA_Congruence(T, Array(coef))
-        elseif geom_type == :pwln && (algorithm == :Chen || algorithm == :default)
-            return sig_pwln_TA_chen(T, Array(coef))
-        elseif geom_type == :pwln && algorithm == :LS
-            return sig_pwln_TA_LS(T,Array(coef))
-        elseif geom_type == :pwmon && algorithm == :Chen
-            return sig_pw_mono_chen(T, composition, regularity)
-        elseif geom_type == :pwmon && (algorithm == :ALS26 || algorithm == :default)
-            return sig_pw_mono_ALS26(T, composition, regularity)
-        elseif geom_type == :poly && ( algorithm == :congruence || algorithm == :default )
-            return sig_poly_TA(T,coef)
-        elseif geom_type == :poly && ( algorithm == :ARS26 )
-            return sig_poly_TA_ARS(T,coef)
-        elseif geom_type == :spline 
-            return sig_spline(T,coef,composition,regularity) 
-        else
-            throw(ArgumentError("sig not supported for given arguments"))
-        end
-
-    elseif seq_type == :p2id
-        if geom_type == :point && coef == [] && algorithm == :default
-            return one(T)
-        elseif geom_type == :mono && coef == [] && algorithm == :default
-            return moment_membrane_p2id(T, shape[1], shape[2])
-        elseif geom_type == :axis && coef == [] && (algorithm == :default || algorithm == :AFS19)
-            return sigAxis_p2id_ClosedForm(T, shape[1], shape[2])
-        elseif geom_type == :axis && coef == [] && algorithm == :Chen
-            return sigAxis_p2id_Chen(T, shape[1], shape[2])
-        elseif geom_type == :poly && algorithm == :default
-            if ndims(coef) == 2
-                return sig2parPoly_fromMatrix(T, coef, shape[1], shape[2])
-            else
-                return sig2parPoly(T, coef)
-            end
-        elseif geom_type == :pwbln && (algorithm == :default || algorithm == :congruence)
-            if ndims(coef) == 2
-                return sig_pwbln_p2id_Congruence(T, coef, shape[1], shape[2])
-            else
-                return sig_pwbln_p2id_Congruence_fromTensor(T, coef, size(coef,1), size(coef,2))
-            end
-        elseif geom_type == :pwbln && algorithm == :LS26
-            if ndims(coef) == 2
-                return sigPiecewiseBilinear_TA(T, coef, shape)
-            else
-               return sigPiecewiseBilinear_fromTensor_TA(T, coef, [size(coef,1), size(coef,2)])
-            end
-        else
-            throw(ArgumentError("sig not supported for given arguments"))
-        end
-    elseif seq_type == :p2
-        throw(ArgumentError("sig not supported for given arguments"))
-
-    else
-        throw(ArgumentError("sig not supported for given arguments"))
-    end
-end
-
+# Notes
+- The function automatically dispatches based on `sequence_type(T)`:
+  - `:iis` – Indexed iterated sequences (typical rough path)
+  - `:p2id` – 2-parameter indexed discrete sequences
+  - `:p2` – Currently not supported
+- `coef` and `shape` provide the data describing the path when needed.
+- `composition` and `regularity` are used for piecewise monomial or spline paths.
+- Throws `ArgumentError` if unsupported combination of arguments is provided.
+"""
 function Base.show(io::IO, x::TruncatedTensorAlgebraElem)
     for (i, t) in enumerate(x.elem)
         show(io, MIME("text/plain"), t)
@@ -1141,6 +1168,16 @@ A new `TruncatedTensorAlgebraElem` representing the `n`-fold Chen product of `a`
 # Throws
 - `ArgumentError` if `sequence_type` is not `:iis` or `:p2id`.
 
+```julia
+using SignatureTensors
+
+T = TruncatedTensorAlgebra(QQ,2, 3)
+
+T=sig(T,:axis)
+
+T^3
+```
+
 # Notes
 - Defined for `sequence_type` ∈ `{:iis, :p2id}`. Not supported for `:p2`.
 - See also: [`Base.inv`](@ref), [`Base.:*`](@ref).
@@ -1195,6 +1232,16 @@ same level `k` as the parent algebra.
 # Throws
 - `ArgumentError` if `sequence_type` is not `:iis`.
 
+# Example
+```julia
+using SignatureTensors
+
+T = TruncatedTensorAlgebra(QQ,2, 3)
+
+T=sig(T,:axis)
+
+exp(T)
+```
 # Notes
 - Only defined for `sequence_type == :iis`. Not supported for `:p2id` or `:p2`.
 - The input `a` is expected to have vanishing level-0 component, as is standard
@@ -1238,6 +1285,17 @@ same level `k` as the parent algebra. The result lives in the Lie algebra
 # Throws
 - `ArgumentError` if `sequence_type` is not `:iis`.
 
+# Example
+```julia
+using SignatureTensors
+
+T = TruncatedTensorAlgebra(QQ,2, 3)
+
+T=sig(T,:axis)
+
+log(T)
+exp(log(T))==T
+```
 # Notes
 - Only defined for `sequence_type == :iis`. Not supported for `:p2id` or `:p2`.
 - The input `a` is expected to have level-0 component equal to `1` (i.e., `a`
@@ -1280,7 +1338,7 @@ See also: Améndola & Schmitz, *Learning Barycenters from Signature Matrices*, a
 - `bs::Vector{TruncatedTensorAlgebraElem{R,E}}`: A nonempty vector of elements from the same
   truncated tensor algebra (all must share the same parent).
 - `algorithm::Symbol`: The algorithm used to compute the barycenter. Options:
-  - `:default` — calls `bary_TA`, the general iterative algorithm valid for any truncation level.
+  - `:default` — calls `bary_TA`, the general iterative algorithm valid for any truncation level .
   - `:geodesic` — geodesic midpoint formula `b₁ · exp(½ · log(b₁⁻¹ · b₂))`;
     only valid for exactly **2 elements**.
   - `:CDMSSU24trunc2` — specialized algorithm from Theorem 4.11 of arXiv:2509.07815,
@@ -2861,7 +2919,7 @@ function sig_lott_1d(pathSeq::Vector{<:AbstractVector}, word::Vector{Int})
 end
 
 
-function sig_pwln_TA_LS(
+function sig_pwln_TA_LS26(
     T::TruncatedTensorAlgebra{R},
     coef1::AbstractMatrix   
 ) where {R}

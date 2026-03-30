@@ -54,8 +54,6 @@ C=sig(T, :axis)
 S=sig(T, :pwln, coef = QQ.([1 2; 3 4]))
 
 # Path recovery from a signature tensor
-
-
 recover(S,C=C)
 ```
 
@@ -67,25 +65,6 @@ recover(S,C=C)
 Pages = ["api.md"]
 Depth = 2
 ```
-
----
-<!--
-## References
-
-This package implements and extends methods from the following works:
-
-- Améndola, Friz, Sturmfels — *Varieties of Signature Tensors*, Forum of Mathematics Sigma, 2019.
-- Pfeffer, Seigal, Sturmfels — *Learning Paths from Signature Tensors*, SIAM J. Matrix Anal., 2019.
-- Clausel et al. — *The Barycenter in Free Nilpotent Lie Groups*, SIAM J. Appl. Algebra Geom., 2024.
-- Améndola, Schmitz — *Learning Barycenters from Signature Matrices*, arXiv:2509.07815, 2025.
-- Schmitz — *An Efficient Algorithm for Tensor Learning*, arXiv:2512.14218, 2025.
-- Lotter, Schmitz — *Signature Matrices of Membranes*, Algebraic Statistics, 2026.
--->
-
-The full reference list is available in the accompanying paper:
-> G. Riffo and L. Schmitz, *Signature Tensors in OSCAR*, 2025.  
-> Code: [github.com/leonardSchmitz/signature-tensors-in-OSCAR](https://github.com/leonardSchmitz/signature-tensors-in-OSCAR)
-
 ---
 
 ## Authors
@@ -95,4 +74,5 @@ The full reference list is available in the accompanying paper:
 | Gabriel Riffo | TU Berlin | [riffo@tu-berlin.de](mailto:riffo@tu-berlin.de) |
 | Leonard Schmitz | TU Berlin | [lschmitz@math.tu-berlin.de](mailto:lschmitz@math.tu-berlin.de) |
 
-Funded by the Deutsche Forschungsgemeinschaft (DFG) — CRC/TRR 388 *"Rough Analysis, Stochastic Dynamics and Related Fields"* — Project A04 and B01, 516748464.
+Funded by the Deutsche Forschungsgemeinschaft (DFG) — [CRC/TRR 388 *"Rough Analysis, Stochastic Dynamics and Related Fields"*](https://sites.google.com/view/trr388/) — Project A04 and B01, 516748464.
+

@@ -1,7 +1,7 @@
 # Documentation
 
 ```@docs
-SignatureTensors.SignatureTensors
+SignatureTensors
 ```
 
 ---
@@ -12,11 +12,11 @@ The core algebraic structures of the package. `TruncatedTensorAlgebra` defines t
 space $T_{d,k}$ together with a coefficient ring and a sequence type (e.g. `:iis` for
 iterated-integrals signatures, `:p2id` for two-parameter id-signatures). Elements of this
 algebra are represented by `TruncatedTensorAlgebraElem`, which stores the graded components
-as a vector of arrays. The free truncated signature algebra types support multivariate
-non-commutative constructions used internally.
+as a vector of arrays.
 
 ```@docs
-SignatureTensors.TruncatedTensorAlgebra
+TruncatedTensorAlgebra
+TruncatedTensorAlgebraElem
 ```
 
 ---
@@ -34,19 +34,19 @@ supported geometry types.
 | `:axis` | Canonical axis path | — |
 | `:mono` | Moment path | — |
 | `:pwln` | Piecewise linear path | `coef`, `algorithm` (`:Chen` or `:congruence`) |
-| `:poly` | Polynomial path | `coef`, `algorithm` (`:congruence` or `:ARS26`) |
+| `:poly` | Polynomial path | `coef`, `algorithm` (`:congruence`, `:ARS26` or `:LS26`) |
 | `:pwmon` | Piecewise monomial path | `composition`, `regularity` |
 | `:spline` | Piecewise polynomial (spline) path | `coef`, `composition`, `regularity` |
 | `:segment` | Single linear segment | `coef` |
 | `:axis` *(membrane)* | Canonical axis membrane | `shape` |
 | `:mono` *(membrane)* | Monomial membrane | `shape` |
 | `:pwbln` | Piecewise bilinear membrane | `coef`, `shape`, `algorithm` (`:congruence` or `:LS26`) |
-| `:poly` *(membrane)* | Polynomial membrane | `coef`, `shape` |
+| `:poly` *(membrane)* | Polynomial membrane | `coef`, `shape`, `algorithm` (`:congruence` or `:LS26`) |
 
 > For membrane types, set `sequence_type=:p2id` when constructing `TruncatedTensorAlgebra`.
 
 ```@docs
-SignatureTensors.sig
+sig
 ```
 
 ---
@@ -59,7 +59,7 @@ solves the polynomial system $S = A * C$ using Gröbner bases, where $C$ is a co
 efficient congruence-stabilizer method that scales as $O(d^4)$ in expectation.
 
 ```@docs
-SignatureTensors.recover
+recover
 ```
 
 ---
@@ -77,7 +77,7 @@ group geodesic distance. Multiple algorithms are available:
 | `:CDMSSU24aBCH` | Asymmetrized BCH series ([CDM+24]) |
 
 ```@docs
-SignatureTensors.bary
+bary
 ```
 
 ---
@@ -103,16 +103,5 @@ Base.:(==)
 
 ---
 
-## Utilities
 
-Lower-level helpers used internally and occasionally useful for advanced workflows.
-`applyMatrixToTTA` computes matrix–tensor congruence $A * T$. `tensor_to_matrix` flattens
-a graded tensor component to a matrix. `graded_component` extracts a single level from a
-truncated tensor algebra element. 
 
-```@docs
-SignatureTensors.applyMatrixToTTA
-SignatureTensors.tensor_to_matrix
-SignatureTensors.graded_component
-SignatureTensors.mode_product
-```

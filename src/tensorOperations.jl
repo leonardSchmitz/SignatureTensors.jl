@@ -132,12 +132,11 @@ A new tensor of the same order as `T` but with the `mode`-th dimension replaced 
   3. Multiplying by `A` (converted to the base ring `R`).
   4. Reshaping the result back to the tensor form.
   5. Permuting the axes back to the original order.
-
 # Example
 ```julia
-T = rand(3,4,2)          # 3×4×2 tensor
-A = rand(5,3)            # 5×3 matrix to multiply along mode 1
-R = Float64               # base ring
+T = QQ.(rand(3,4,2))          # 3×4×2 tensor
+A = QQ.[rand(-20:20,5,3)]            # 5×3 matrix to multiply along mode 1
+R = QQ               # base ring
 T_new = mode_product(T, A, 1, R)
 size(T_new)               # returns (5,4,2)
 ```
