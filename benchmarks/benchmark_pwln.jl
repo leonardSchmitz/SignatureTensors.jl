@@ -1,4 +1,6 @@
 using SignatureTensors
+using BenchmarkTools
+using Oscar
 
 function pair_table(A::AbstractMatrix{<:Real}, B::AbstractMatrix{<:Real})
     @assert size(A) == size(B) "A and B must have the same dimensions"
