@@ -42,3 +42,5 @@ Ad = wordAlgebra(d);
 M = matrix toList apply(1..d,i->toList apply(1..d, i->random(-20,20)))
 X = pwLinPath(M);
 time mT = sigT(X,k,Ad);
+time mT = sig(X,k,Ad);
+
