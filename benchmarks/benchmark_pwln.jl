@@ -63,10 +63,10 @@ end
 
 k = 3;
 ds = Vector(10:10:60);
-N = 100;
-B_chen = benchmark_signature(ds,ds,k,num_samples=N,algorithm=:Chen,FloatN=true)
-B_cong= benchmark_signature(ds,ds,k,num_samples=N,algorithm=:congruence,FloatN=true)
-print(latex_table(B_chen[1],B_cong[1], rowlabels=ds, collabels=ds))  # Table 1 (k=3)
+N = 5;
+B_chen_3 = benchmark_signature(ds,ds,k,num_samples=N,algorithm=:Chen,FloatN=true)
+B_cong_3= benchmark_signature(ds,ds,k,num_samples=N,algorithm=:congruence,FloatN=true)
+print(latex_table(B_chen_3[1],B_cong_3[1], rowlabels=ds, collabels=ds))  # Table 1 (k=3)
 
 
 k = 4;
@@ -79,15 +79,22 @@ print(latex_table(B_chen[1],B_cong[1], rowlabels=ds, collabels=ds))  # Table 1 (
 k = 3;
 ds = Vector(10:10:60);
 N = 100;
-P_chen = benchmark_signature(ds,ds,k,signature_path=:poly,num_samples=N,algorithm=:Chen,FloatN=true)
-P_cong= benchmark_signature(ds,ds,k,signature_path=:poly,num_samples=N,algorithm=:congruence,FloatN=true)
-print(latex_table(B_chen[1],B_cong[1], rowlabels=ds, collabels=ds))  # Table 1 (k=3)
+
+P_cong_3= benchmark_signature(ds,ds,k,signature_path=:poly,num_samples=N,algorithm=:congruence,FloatN=true)
+
+print(latex_table(B_cong_3[1],P_cong_3[1], rowlabels=ds, collabels=ds))  # Table 1 (k=3)
 
 
 k = 4;
-P_chen = benchmark_signature(ds,ds,k,num_samples=N,signature_path=:poly,algorithm=:Chen,FloatN=true)
+
 P_cong= benchmark_signature(ds,ds,k,num_samples=N,signature_path=:poly,algorithm=:congruence,FloatN=true)
-print(latex_table(B_chen[1],B_cong[1], rowlabels=ds, collabels=ds))  # Table 1 (k=4)
+
+print(latex_table(B_cong[1],P_cong[1], rowlabels=ds, collabels=ds))  # Table 1 (k=4)
+
+
+
+
+
 
 
 
