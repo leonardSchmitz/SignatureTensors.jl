@@ -221,6 +221,24 @@ function _C0_TA(_k::Int, _order::Int, _alg, is_one::Bool)
     end
 end
 
+function _C0_TA_p2(_k::Int, _order::Int, _alg, is_one::Bool)
+    if _k == 0
+        return fill(is_one ? one(_alg) : zero(_alg), ())
+    elseif _k == 1
+        # shape (d,) — solo 1 permutación en Σ_1, no añade dimensión útil
+        # pero para consistencia: shape (d, 1)
+        return fill(zero(_alg), _order, 1)
+    else
+        # shape (d, d, ..., d, k!) con k dimensiones d y 1 dimensión k!
+        n_perms = factorial(_k)
+        return fill(zero(_alg), ntuple(_ -> _order, _k)..., n_perms)
+    end
+end
+
+function _C0_seq_TA_p2(_trunc_level::Int, _order::Int, _alg, is_one::Bool)
+    return [_C0_TA_p2(_k, _order, _alg, is_one) for _k in 0:_trunc_level]
+end
+
 function tensor_sequence_constructor(A::TruncatedTensorAlgebra; is_one=true)
     R   = A.base_algebra
     d   = A.amb_dim
@@ -431,6 +449,12 @@ function Base.one(T::TruncatedTensorAlgebra{R}) where R
         E = typeof(one(alg))
 
         return TruncatedTensorAlgebraElem{R,E}(T, _C0_seq_TA(k, d, alg, true))
+    elseif T.sequence_type == :p2
+        k = truncation_level(T)
+        d = base_dimension(T)
+        alg = T.base_algebra
+        E = typeof(one(alg))
+        return TruncatedTensorAlgebraElem{R,E}(T, _C0_seq_TA_p2(k, d, alg, true))
     else
         throw(ArgumentError("one(T) is only defined for sequence_type = :iis, :p2id"))
     end
@@ -569,10 +593,32 @@ function sig(T::TruncatedTensorAlgebra{R}, geom_type::Symbol; coef=[], shape=[],
             throw(ArgumentError("sig not supported for given arguments"))
         end
     elseif seq_type == :p2
-        if geom_type == :axis && coef == [] && (algorithm == :default || algorithm == :AFS19)
+        if geom_type == :point && coef == [] && algorithm == :default
+            return one(T)
+        elseif geom_type == :mono && coef == [] && algorithm == :default
+            return moment_membrane_p2(T, shape[1], shape[2])
+        elseif geom_type == :axis && coef == [] && (algorithm == :default || algorithm == :AFS19)
             return sigAxis_p2_ClosedForm(T, shape[1], shape[2])
         elseif geom_type == :axis && coef == [] && algorithm == :Chen
             return sigAxis_p2_Chen(T, shape[1], shape[2])
+        elseif geom_type == :poly && algorithm == :default
+            if ndims(coef) == 2
+                return sig2parPoly_fromMatrix_p2(T, coef, shape[1], shape[2])
+            else
+                return sig2parPoly_p2(T, coef)
+            end
+        elseif geom_type == :pwbln && (algorithm == :default || algorithm == :congruence)
+            if ndims(coef) == 2
+                return sig_pwbln_p2_Congruence(T, coef, shape[1], shape[2])
+            else
+                return sig_pwbln_p2_Congruence_fromTensor(T, coef, size(coef,1), size(coef,2))
+            end
+        elseif geom_type == :pwbln && algorithm == :LS26
+            if ndims(coef) == 2
+                return sigPiecewiseBilinear_TA_p2(T, coef, shape)
+            else
+               return sigPiecewiseBilinear_fromTensor_TA_p2(T, coef, [size(coef,1), size(coef,2)])
+            end
         else 
             throw(ArgumentError("sig not supported for given arguments"))
         end
@@ -1153,8 +1199,10 @@ function Base.:*(matrix::AbstractMatrix, x::TruncatedTensorAlgebraElem)
         return matrix_tensorAlg_congruence_TA(matrix, x)
     elseif  T.sequence_type == :p2id
         return applyMatrixToTTA(matrix, x)
+    elseif  T.sequence_type == :p2
+        return applyMatrixToTTA(matrix, x)
     else
-        throw(ArgumentError("matrix * TruncatedTensorAlgebraElem ony defined for sequence_type = :iis, :p2id"))
+        throw(ArgumentError("matrix * TruncatedTensorAlgebraElem ony defined for sequence_type = :iis, :p2id, :p2"))
     end
 end
 
@@ -2330,26 +2378,19 @@ function applyMatrixToTTA(
             resSeq[j] = matrix_tensor_congruence_TA(Anew, T)
 
         elseif seq_type == :p2
-
-            perms = permutations_1_to_j(order)
-
             dims = ntuple(_ -> d_new, order)
             Tperm = Array{eltype(T)}(undef, (dims..., factorial(order)))
 
-            for (perm_idx, perm) in enumerate(perms)
+            for perm_idx in 1:factorial(order)
+                # Extraer slice puro de shape (d_old,...,d_old)
+                T_slice = T[ntuple(_ -> :, order)..., perm_idx]
 
-                S = similar(T)
+                # Aplicar congruencia solo sobre las dimensiones tensoriales
+                Snew = matrix_tensor_congruence_TA(Anew, T_slice)
 
-                for idx in Iterators.product(ntuple(_ -> 1:size(T,1), order)...)
-                    idx_perm = idx[perm]
-                    S[idx...] = T[idx_perm...]
-                end
-
-                Snew = matrix_tensor_congruence_TA(Anew, S)
-
+                # Guardar en el slot correspondiente
                 Tperm[ntuple(_ -> :, order)..., perm_idx] = Snew
             end
-
             resSeq[j] = Tperm
 
         else
@@ -2414,6 +2455,36 @@ function sig2parPoly_fromMatrix(
     return T_new
 end
 
+function sig2parPoly_fromMatrix_p2(
+    T::TruncatedTensorAlgebra,
+    A_tilde::AbstractMatrix{S},
+    m::Int,
+    n::Int
+) where {S}
+
+    d, mn = size(A_tilde)
+
+    d == base_dimension(T) ||
+        error("size(A_tilde,1) must equal T.base_dimension")
+
+    mn == m * n ||
+        error("size(A_tilde,2) must equal m*n")
+
+
+    Ttemp = TruncatedTensorAlgebra(
+        base_algebra(T),
+        m*n,
+        truncation_level(T),
+        :p2
+    )
+
+    T_moment = moment_membrane_p2(Ttemp, m, n)
+
+    T_new = applyMatrixToTTA(A_tilde, T_moment)
+
+    return T_new
+end
+
 """
     sig2parPoly(T::TruncatedTensorAlgebra, A::AbstractArray{S,3})
 
@@ -2460,6 +2531,29 @@ function sig2parPoly(
 end
 
 
+function sig2parPoly_p2(
+    T::TruncatedTensorAlgebra,
+    A::AbstractArray{S,3}
+) where {S}
+    d, m, n = size(A)
+    d == base_dimension(T) ||
+        error("size(A,1) must equal T.base_dimension")
+    Ttemp = TruncatedTensorAlgebra(base_algebra(T), m*n, truncation_level(T), :p2)
+    T_moment = moment_membrane_p2(Ttemp, m, n)
+    A_tilde = fill(zero(parent(A[1,1,1])), d, m * n)
+    @inbounds for kidx in 1:d
+        for i in 1:m
+            for j in 1:n
+                col = (i - 1) * n + j
+                A_tilde[kidx, col] = A[kidx, i, j]
+            end
+        end
+    end
+    T_new = applyMatrixToTTA(A_tilde, T_moment)
+    return T_new
+end
+
+
 function sig_pwbln_p2id_Congruence_fromTensor(
     T::TruncatedTensorAlgebra,
     membrane_tensor::AbstractArray{S,3},
@@ -2491,9 +2585,49 @@ function sig_pwbln_p2id_Congruence_fromTensor(
     k_old = truncation_level(T)
     R_old = base_algebra(T)
 
-    T_old = TruncatedTensorAlgebra(R_old, d_old, k_old, :p2id)
+    T_old = TruncatedTensorAlgebra(R_old, d_old, k_old, :p2)
 
-    T_axis = sigAxis_p2id_ClosedForm(T_old, m, n)
+    T_axis = sigAxis_p2_ClosedForm(T_old, m, n)
+
+    T_new = applyMatrixToTTA(A, T_axis)
+
+    return T_new
+end
+
+function sig_pwbln_p2_Congruence_fromTensor(
+    T::TruncatedTensorAlgebra,
+    membrane_tensor::AbstractArray{S,3},
+    m::Int,
+    n::Int
+) where {S}
+
+    size(membrane_tensor,1) == m || error("First dimension must be m")
+    size(membrane_tensor,2) == n || error("Second dimension must be n")
+
+    d_new = size(membrane_tensor,3)
+
+
+    coef2 = Matrix{S}(undef, d_new, m*n)
+
+    for di in 1:d_new
+        cont = 0
+        for i in 1:m
+            for j in 1:n
+                cont += 1
+                coef2[di, cont] = membrane_tensor[i, j, di]
+            end
+        end
+    end
+
+    A = coef2
+
+    d_old = m*n
+    k_old = truncation_level(T)
+    R_old = base_algebra(T)
+
+    T_old = TruncatedTensorAlgebra(R_old, d_old, k_old, :p2)
+
+    T_axis = sigAxis_p2_ClosedForm(T_old, m, n)
 
     T_new = applyMatrixToTTA(A, T_axis)
 
@@ -2521,6 +2655,24 @@ function sig_pwbln_p2id_Congruence(
     return T_new
 end
 
+function sig_pwbln_p2_Congruence(
+    T::TruncatedTensorAlgebra,
+    A::AbstractMatrix{S},  
+    m::Int, n::Int         # dimension
+) where {S}
+    
+    size(A,2) == (m*n) || error("A must have size (d_new, m*n")
+    
+    d_old=m*n
+    k_old=truncation_level(T)
+    R_old=base_algebra(T)
+    T_old=TruncatedTensorAlgebra(R_old, d_old, k_old, :p2)
+
+    T_axis = sigAxis_p2_ClosedForm(T_old, m, n)
+    T_new = applyMatrixToTTA(A, T_axis)
+
+    return T_new
+end
 
 
 function row_sum(matrix)
@@ -2674,6 +2826,87 @@ function sigPiecewiseBilinear_TA(
     return TruncatedTensorAlgebraElem(T2, elem_out)
 end
 
+function sigPiecewiseBilinear_TA_p2(
+    T::TruncatedTensorAlgebra{R},
+    coef2::AbstractMatrix,
+    shape
+) where R
+    if T.sequence_type != :p2
+        error("sigPiecewiseBilinear_TA_p2 only defined for sequence_type = :p2")
+    end
+    if isa(shape, AbstractVector) && length(shape) == 2
+        m, n = shape[1], shape[2]
+    elseif isa(shape, Tuple) && length(shape) == 2
+        m, n = shape
+    else
+        error("shape must be a Tuple or Vector of length 2")
+    end
+    d = size(coef2, 1)
+    if size(coef2, 2) != (m * n)
+        error("size(coef,2) does not match number of membranes")
+    end
+    k      = truncation_level(T)
+    Rbase  = base_algebra(T)
+    R_matrix = parent(coef2[1, 1])
+    Rnew   = common_ring(Rbase, R_matrix)
+    E      = typeof(one(Rnew))
+
+    # build membrane exactly as in p2id version
+    membrane = Vector{Matrix{E}}(undef, d)
+    for di in 1:d
+        M    = Matrix{E}(undef, m, n)
+        cont = 0
+        for i in 1:m
+            for j in 1:n
+                cont += 1
+                M[i, j] = coef2[di, cont]
+            end
+        end
+        membrane[di] = M
+    end
+
+    elem_out    = Vector{Array{E}}(undef, k + 1)
+    elem_out[1] = fill(one(Rnew), ())
+
+    function compute_level_p2(r)
+        perms    = collect(permutations_1_to_j(r))   # all π ∈ Σ_r, length = r!
+        n_perms  = length(perms)
+        # shape: (d, d, ..., d, r!) — r indices of size d + 1 index of size r!
+        tensor_dims = (ntuple(_ -> d, r)..., n_perms)
+        Tlevel      = fill(zero(E), tensor_dims...)
+
+        function loop_word(current::Vector{Int}, level::Int)
+            if level > r
+                for (pidx, perm) in enumerate(perms)
+                    # permute the word according to π: apply π to the time-axis
+                    permuted_word = [current[perm[q]] for q in 1:r]
+                    val = sig_lott(membrane, permuted_word)
+                    idx = (Tuple(current)..., pidx)
+                    Tlevel[idx...] = try
+                        convert(E, val)
+                    catch
+                        val
+                    end
+                end
+            else
+                for letter in 1:d
+                    current[level] = letter
+                    loop_word(current, level + 1)
+                end
+            end
+        end
+
+        loop_word(fill(0, r), 1)
+        return Tlevel
+    end
+
+    for j in 1:k
+        elem_out[j + 1] = compute_level_p2(j)
+    end
+
+    T2 = TruncatedTensorAlgebra(Rnew, d, k, :p2)
+    return TruncatedTensorAlgebraElem(T2, elem_out)
+end
 
 function sigPiecewiseBilinear_fromTensor_TA(
     T::TruncatedTensorAlgebra{R},
@@ -2750,6 +2983,82 @@ function sigPiecewiseBilinear_fromTensor_TA(
     end
 
     T2 = TruncatedTensorAlgebra(Rnew, d, k, :p2id)
+    return TruncatedTensorAlgebraElem(T2, elem_out)
+end
+
+function sigPiecewiseBilinear_fromTensor_TA_p2(
+    T::TruncatedTensorAlgebra{R},
+    membrane_tensor::AbstractArray{S,3},
+    shape
+) where {R,S}
+    if T.sequence_type != :p2
+        error("sigPiecewiseBilinear_fromTensor_TA_p2 only defined for sequence_type = :p2")
+    end
+    if isa(shape, AbstractVector) && length(shape) == 2
+        m, n = shape[1], shape[2]
+    elseif isa(shape, Tuple) && length(shape) == 2
+        m, n = shape
+    else
+        error("shape must be a Tuple or Vector of length 2")
+    end
+    size(membrane_tensor, 1) == m || error("First dimension must be m")
+    size(membrane_tensor, 2) == n || error("Second dimension must be n")
+    d      = size(membrane_tensor, 3)
+    k      = truncation_level(T)
+    Rbase  = base_algebra(T)
+    R_tensor = parent(membrane_tensor[1, 1, 1])
+    Rnew   = common_ring(Rbase, R_tensor)
+    E      = typeof(one(Rnew))
+
+    membrane = Vector{Matrix{E}}(undef, d)
+    for di in 1:d
+        M = Matrix{E}(undef, m, n)
+        for i in 1:m
+            for j in 1:n
+                M[i, j] = convert(E, membrane_tensor[i, j, di])
+            end
+        end
+        membrane[di] = M
+    end
+
+    elem_out    = Vector{Array{E}}(undef, k + 1)
+    elem_out[1] = fill(one(Rnew), ())
+
+    function compute_level_p2(r)
+        perms       = collect(permutations_1_to_j(r))
+        n_perms     = length(perms)
+        tensor_dims = (ntuple(_ -> d, r)..., n_perms)
+        Tlevel      = fill(zero(E), tensor_dims...)
+
+        function loop_word(current::Vector{Int}, level::Int)
+            if level > r
+                for (pidx, perm) in enumerate(perms)
+                    permuted_word = [current[perm[q]] for q in 1:r]
+                    val = sig_lott(membrane, permuted_word)
+                    idx = (Tuple(current)..., pidx)
+                    Tlevel[idx...] = try
+                        convert(E, val)
+                    catch
+                        val
+                    end
+                end
+            else
+                for letter in 1:d
+                    current[level] = letter
+                    loop_word(current, level + 1)
+                end
+            end
+        end
+
+        loop_word(fill(0, r), 1)
+        return Tlevel
+    end
+
+    for j in 1:k
+        elem_out[j + 1] = compute_level_p2(j)
+    end
+
+    T2 = TruncatedTensorAlgebra(Rnew, d, k, :p2)
     return TruncatedTensorAlgebraElem(T2, elem_out)
 end
 
