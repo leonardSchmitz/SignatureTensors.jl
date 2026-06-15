@@ -2585,9 +2585,9 @@ function sig_pwbln_p2id_Congruence_fromTensor(
     k_old = truncation_level(T)
     R_old = base_algebra(T)
 
-    T_old = TruncatedTensorAlgebra(R_old, d_old, k_old, :p2)
+    T_old = TruncatedTensorAlgebra(R_old, d_old, k_old, :p2id)
 
-    T_axis = sigAxis_p2_ClosedForm(T_old, m, n)
+    T_axis = sigAxis_p2id_ClosedForm(T_old, m, n)
 
     T_new = applyMatrixToTTA(A, T_axis)
 
