@@ -2873,7 +2873,7 @@ function sigPiecewiseBilinear_TA_p2(
         n_perms  = length(perms)
         # shape: (d, d, ..., d, r!) — r indices of size d + 1 index of size r!
         tensor_dims = (ntuple(_ -> d, r)..., n_perms)
-        Tlevel      = fill(zero(E), tensor_dims...)
+        Tlevel      = fill(zero(Rnew), tensor_dims...)
 
         function loop_word(current::Vector{Int}, level::Int)
             if level > r
