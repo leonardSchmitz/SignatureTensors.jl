@@ -2297,20 +2297,22 @@ function moment_membrane_p2(TTA::TruncatedTensorAlgebra, m::Int, n::Int)
     TTA_out = TruncatedTensorAlgebra(
         R, d, k, :p2
     )
-    TTA_out.elem = Vector{Any}(undef, k)
+    E = typeof(one(R))
+    seq = Vector{Array{E}}(undef, k+1)
+    seq[1] = fill(one(R), ())    # nivel 0
 
     for j in 1:k
-        sigma_m = moment_path_level(R, m, j)
-        sigma_n = moment_path_level(R, n, j)
+        sigma_m = moment_path_level(TTA, m, j)
+        sigma_n = moment_path_level(TTA, n, j)
 
         perms = collect(permutations_1_to_j(j))
-        tensor_j = Array{QQMPolyRingElem}(undef, (ntuple(_ -> m*n, j)..., factorial(j)))
+        tensor_j = Array{E}(undef, (ntuple(_ -> m*n, j)..., factorial(j)))
 
         # Loop over permutations
         for (perm_idx, perm) in enumerate(perms)
-            sigma_n_perm = Array{QQMPolyRingElem}(undef, size(sigma_n)...)
+            sigma_n_perm = Array{E}(undef, size(sigma_n)...)
             for idx in Iterators.product(ntuple(_ -> 1:n, j)...)
-                idx_perm = idx[perm]
+                idx_perm = ntuple(i -> idx[perm[i]], j)
                 sigma_n_perm[idx...] = sigma_n[idx_perm...]
             end
 
@@ -2321,11 +2323,12 @@ function moment_membrane_p2(TTA::TruncatedTensorAlgebra, m::Int, n::Int)
             end
         end
 
-        TTA_out.elem[j] = tensor_j
+        seq[j+1] = tensor_j
     end
 
-    return TTA_out
+    return TruncatedTensorAlgebraElem(TTA_out, seq)
 end
+
 
 """
     applyMatrixToTTA(A::AbstractMatrix, X::TruncatedTensorAlgebra)
