@@ -248,7 +248,5 @@ function build_table2(ds=(2,3,4,5); mmax::Int=7, kwargs...)
     return results
 end
 
-Table 2 (Example 6.7): dim P_{d,3,(m,n)}, dict=:mono, for d in `ds`.
-
 
 run_table(3, 2, 5; dict=:axis, trials=2, bound=100)
